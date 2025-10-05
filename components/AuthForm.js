@@ -70,7 +70,7 @@ const AuthForm = ({type}) => {
         </div>
         <h3>Practise the job interviews with the AI</h3>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="form space-y-8">
             {/* Name field - only for sign-up */}
             {!isSignIn && (
               <FormField
@@ -105,7 +105,7 @@ const AuthForm = ({type}) => {
             </Button>
           </form>
         </Form>
-        <p className="text- center">
+        <p className="text-center">
           {isSignIn ? 'No Account yet ?' :'Have an accout already ?'}
           <Link href={!isSignIn ? '/sign-in' : '/sign-up'}className = "font-bold text-user-primary ml-1"> 
           {!isSignIn ? "Sign in " : 'Sign up'}</Link>
