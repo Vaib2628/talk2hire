@@ -3,24 +3,24 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
+import FormField from "@/components/FormField";
 import Image from "next/image";
 import Link from "next/link";
-const formSchema = z.object({
-  name: z.string().min(2).max(50).optional(),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+import { useRouter } from "next/navigation";
+
+const authFormSchema = (type) => {
+  return z.object({
+    name: type === 'sign-up' ? z.string().min(2).max(50) : z.string().optional(),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters")
+  });
+};
+
+  
 const AuthForm = ({type}) => {
+  const router = useRouter();
+  const formSchema = authFormSchema(type);
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -31,7 +31,31 @@ const AuthForm = ({type}) => {
   });
 
   function onSubmit(values) {
-    console.log(values);
+    console.log('Form submitted with values:', values);
+    console.log('Form type:', type);
+    
+    try {
+      if (type === 'sign-up') {
+        console.log('Creating account for:', values.email);
+        // Simulate account creation (replace with actual Firebase auth)
+        setTimeout(() => {
+          console.log('Redirecting to sign-in page...');
+          alert('Account created successfully! Redirecting to sign in...');
+          router.push('/sign-in');
+        }, 1000);
+      } else {
+        console.log('Signing in with:', values.email);
+        // Simulate sign in (replace with actual Firebase auth)
+        setTimeout(() => {
+          console.log('Redirecting to home page...');
+          alert('Sign in successful! Redirecting to home page...');
+          router.push('/');
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Error in onSubmit:', error);
+      alert('An error occurred. Please try again.');
+    }
   }
 
    const isSignIn= type === 'sign-in';
@@ -52,15 +76,9 @@ const AuthForm = ({type}) => {
               <FormField
                 control={form.control}
                 name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter your full name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                label="Full Name"
+                placeholder="Enter your full name"
+                type="text"
               />
             )}
             
@@ -68,32 +86,18 @@ const AuthForm = ({type}) => {
             <FormField
               control={form.control}
               name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter your email" type="email" {...field} />
-                  </FormControl>
-                  
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Email"
+              placeholder="Enter your email"
+              type="email"
             />
             
             {/* Password field - for both sign-in and sign-up */}
             <FormField
               control={form.control}
               name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter your password" type="password" {...field} />
-                  </FormControl>
-                 
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Password"
+              placeholder="Enter your password"
+              type="password"
             />
             
             <Button className="btn" type="submit">
