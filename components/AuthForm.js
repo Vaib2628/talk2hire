@@ -14,20 +14,28 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import Link from "next/link";
 const formSchema = z.object({
-  username: z.string().min(2).max(50),
+  name: z.string().min(2).max(50).optional(),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
-const AuthForm = () => {
+const AuthForm = ({type}) => {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
-    },
+      name: "",
+      email: "",
+      password: "",
+    }, 
   });
 
   function onSubmit(values) {
     console.log(values);
   }
+
+   const isSignIn= type === 'sign-in';
+
 
   return (
     <div className="card-border lg-min-w-[400px]">
@@ -39,25 +47,65 @@ const AuthForm = () => {
         <h3>Practise the job interviews with the AI</h3>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Name field - only for sign-up */}
+            {!isSignIn && (
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your full name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            {/* Email field - for both sign-in and sign-up */}
             <FormField
               control={form.control}
-              name="username"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="shadcn" {...field} />
+                    <Input placeholder="Enter your email" type="email" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    This is your public display name.
-                  </FormDescription>
+                  
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit">Submit</Button>
+            
+            {/* Password field - for both sign-in and sign-up */}
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter your password" type="password" {...field} />
+                  </FormControl>
+                 
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <Button className="btn" type="submit">
+              {isSignIn ? 'Sign in' : 'Create an Account'}
+            </Button>
           </form>
         </Form>
+        <p className="text- center">
+          {isSignIn ? 'No Account yet ?' :'Have an accout already ?'}
+          <Link href={!isSignIn ? '/sign-in' : '/sign-up'}className = "font-bold text-user-primary ml-1"> 
+          {!isSignIn ? "Sign in " : 'Sign up'}</Link>
+        </p>
       </div>
     </div>
   );
