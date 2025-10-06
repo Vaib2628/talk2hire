@@ -20,7 +20,18 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const analytics = getAnalytics(app);
+
+// Analytics is only available in the browser. Guard to avoid SSR errors.
+let analytics;
+if (typeof window !== "undefined") {
+  try {
+    analytics = getAnalytics(app);
+  } catch (e) {
+    // ignore analytics init errors (e.g., missing measurementId or unsupported env)
+  }
+}
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export { analytics };
 

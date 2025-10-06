@@ -8,6 +8,10 @@ import FormField from "@/components/FormField";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/firebase/client";
+import { signIn, signUp } from "@/lib/Actions/auth.action";
+import { toast } from "sonner";
 
 const authFormSchema = (type) => {
   return z.object({
@@ -30,31 +34,94 @@ const AuthForm = ({type}) => {
     }, 
   });
 
-  function onSubmit(values) {
+async function onSubmit(values) {
     console.log('Form submitted with values:', values);
     console.log('Form type:', type);
     
     try {
       if (type === 'sign-up') {
-        console.log('Creating account for:', values.email);
-        // Simulate account creation (replace with actual Firebase auth)
-        setTimeout(() => {
-          console.log('Redirecting to sign-in page...');
-          alert('Account created successfully! Redirecting to sign in...');
+        const {name , email , password} = values;
+        try {
+          const userCrediantials = await createUserWithEmailAndPassword(auth , email , password );
+
+          const result = await signUp({
+            uid : userCrediantials.user.uid ,
+            name : name ,
+            email,
+            password
+          })
+
+          if (!result?.success) {
+            alert("Failed to create account ")
+            toast.error(result?.message || 'Failed to create account');
+            return ;
+          }
+
+          toast.success('Account created Successfully. Please Sign In');
           router.push('/sign-in');
-        }, 1000);
+        } catch (err) {
+          if (err?.code === 'auth/email-already-in-use') {
+            toast.error('Email already in use. Please sign in or use another email.');
+            return;
+          }
+          throw err;
+        }
       } else {
-        console.log('Signing in with:', values.email);
-        // Simulate sign in (replace with actual Firebase auth)
-        setTimeout(() => {
-          console.log('Redirecting to home page...');
-          alert('Sign in successful! Redirecting to home page...');
+        const {email , password} = values ;
+        
+        try {
+          console.log('Attempting to sign in with:', email);
+          const userCrediantial = await signInWithEmailAndPassword(auth ,email , password)
+          console.log('Firebase auth successful, getting token...');
+          const idToken = await userCrediantial.user.getIdToken();
+
+          if (!idToken) {
+            toast.error('Failed to get authentication token')
+            return ;
+          }
+
+          console.log('Calling server signIn function...');
+          const result = await signIn({
+            email , idToken
+          })
+          console.log('Server signIn result:', result);
+
+          if (!result?.success) {
+            toast.error(result?.message || 'Failed to sign in');
+            return;
+          }
+
+          toast.success("Sign In successfully .")
           router.push('/');
-        }, 1000);
+        } catch (err) {
+          if (err?.code === 'auth/user-not-found') {
+            toast.error('No account found with this email. Please sign up first.');
+          } else if (err?.code === 'auth/wrong-password') {
+            toast.error('Incorrect password. Please try again.');
+          } else if (err?.code === 'auth/invalid-email') {
+            toast.error('Invalid email address.');
+          } else if (err?.code === 'auth/too-many-requests') {
+            toast.error('Too many failed attempts. Please try again later.');
+          } else {
+            throw err;
+          }
+        }
       }
     } catch (error) {
-      console.error('Error in onSubmit:', error);
-      alert('An error occurred. Please try again.');
+      const code = error?.code || "unknown";
+      const message = error?.message || "An error occurred. Please try again.";
+      console.error('Auth error:', code, message);
+      if (code === 'auth/email-already-in-use') {
+        toast.error('Email already in use. Please sign in or use another email.');
+      } else if (code === 'auth/weak-password') {
+        toast.error('Password is too weak. Use at least 6 characters.');
+      } else if (code === 'auth/invalid-email') {
+        toast.error('Invalid email address.');
+      } else if (code === 'auth/network-request-failed') {
+        toast.error('Network error. Check your connection and try again.');
+      } else {
+        toast.error(message);
+      }
     }
   }
 
