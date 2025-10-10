@@ -60,8 +60,12 @@ async function onSubmit(values) {
           toast.success('Account created Successfully. Please Sign In');
           router.push('/sign-in');
         } catch (err) {
-          if (err?.code === 'auth/email-already-in-use') {
+          const code = err?.code;
+          if (code === 'auth/email-already-in-use') {
             toast.error('Email already in use. Please sign in or use another email.');
+            return;
+          } else if (code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+            toast.error('Invalid credentials. Please check your email and password.');
             return;
           }
           throw err;
@@ -94,14 +98,17 @@ async function onSubmit(values) {
           toast.success("Sign In successfully .")
           router.push('/');
         } catch (err) {
-          if (err?.code === 'auth/user-not-found') {
+          const code = err?.code;
+          if (code === 'auth/user-not-found') {
             toast.error('No account found with this email. Please sign up first.');
-          } else if (err?.code === 'auth/wrong-password') {
+          } else if (code === 'auth/wrong-password') {
             toast.error('Incorrect password. Please try again.');
-          } else if (err?.code === 'auth/invalid-email') {
+          } else if (code === 'auth/invalid-email') {
             toast.error('Invalid email address.');
-          } else if (err?.code === 'auth/too-many-requests') {
+          } else if (code === 'auth/too-many-requests') {
             toast.error('Too many failed attempts. Please try again later.');
+          } else if (code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+            toast.error('Invalid credentials. Please check your email and password.');
           } else {
             throw err;
           }
@@ -110,7 +117,6 @@ async function onSubmit(values) {
     } catch (error) {
       const code = error?.code || "unknown";
       const message = error?.message || "An error occurred. Please try again.";
-      console.error('Auth error:', code, message);
       if (code === 'auth/email-already-in-use') {
         toast.error('Email already in use. Please sign in or use another email.');
       } else if (code === 'auth/weak-password') {
@@ -119,6 +125,8 @@ async function onSubmit(values) {
         toast.error('Invalid email address.');
       } else if (code === 'auth/network-request-failed') {
         toast.error('Network error. Check your connection and try again.');
+      } else if (code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+        toast.error('Invalid credentials. Please check your email and password.');
       } else {
         toast.error(message);
       }
@@ -167,8 +175,10 @@ async function onSubmit(values) {
               type="password"
             />
             
-            <Button className="btn" type="submit">
-              {isSignIn ? 'Sign in' : 'Create an Account'}
+            <Button className="btn" type="submit" disabled={form.formState.isSubmitting} aria-busy={form.formState.isSubmitting}>
+              {form.formState.isSubmitting
+                ? (isSignIn ? 'Signing in…' : 'Creating account…')
+                : (isSignIn ? 'Sign in' : 'Create an Account')}
             </Button>
           </form>
         </Form>
