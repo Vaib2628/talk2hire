@@ -39,7 +39,28 @@ const Agent = ({ userName, userId, type }) => {
     const onSpeachStart = () => setIsSpeaking(true);
     const onSpeachEnd = () => setIsSpeaking(false);
 
-    const onError = (error) => console.log("Error", error);
+    const onError = async (error) => {
+      console.error("Vapi Error:", error);
+      console.error("Error details:", {
+        type: error.type,
+        stage: error.stage,
+        error: error.error,
+        context: error.context
+      });
+      
+      // Try to extract the actual error response
+      if (error.error && error.error instanceof Response) {
+        try {
+          const errorText = await error.error.text();
+          console.error("Actual error response:", errorText);
+        } catch (e) {
+          console.error("Could not read error response:", e);
+        }
+      }
+      
+      setCallStatus(CallStatus.INACTIVE);
+      alert(`Call error: ${error.error?.message || error.message || 'Unknown error'}`);
+    };
 
     vapi.on("call-start", onCallStart);
     vapi.on("call-end", onCallEnd);
@@ -64,14 +85,69 @@ const Agent = ({ userName, userId, type }) => {
   }, [messages, callStatus, type, userId])
 
   const handleCall = async ()=>{
-    setCallStatus(CallStatus.CONNECTING) ;
-    await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID , {
-      variableValues : {
-        username : userName ,
-        userid : userId ,
+    try {
+      setCallStatus(CallStatus.CONNECTING) ;
+      
+      // Debug: Check if environment variables are set
+      console.log('VAPI_WEB_TOKEN:', process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN ? 'Set' : 'Missing');
+      console.log('VAPI_ASSISTANT_ID:', process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID ? 'Set' : 'Missing');
+      
+      if (!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN) {
+        throw new Error('VAPI_WEB_TOKEN is not set');
       }
-    });
+      
+      if (!process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID) {
+        throw new Error('VAPI_ASSISTANT_ID is not set. You need to create an Assistant in your Vapi dashboard and use its ID instead of a Workflow ID.');
+      }
+      
+      console.log('Starting call with:', {
+        assistantId: process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID,
+        assistantIdLength: process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID?.length,
+        userName: userName,
+        userId: userId,
+      });
+      
+      // Pre-generate questions before starting the call
+      console.log('Pre-generating interview questions...');
+      await preGenerateInterview();
+      
+      // Use the start method with Assistant ID
+      console.log('Starting call with Assistant ID...');
+      await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+    } catch (error) {
+      console.error('Error starting call:', error);
+      setCallStatus(CallStatus.INACTIVE);
+      alert(`Failed to start call: ${error.message}`);
+    }
   }
+
+  const preGenerateInterview = async () => {
+    try {
+      // Generate questions using your existing API
+      const response = await fetch('/api/vapi/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'Mixed', // You can make this dynamic
+          role: 'Software Developer', // You can make this dynamic
+          level: 'Mid-level', // You can make this dynamic
+          techstack: 'React, JavaScript, Node.js', // You can make this dynamic
+          userid: userId,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Interview questions generated:', result);
+        // Store the questions in state or pass them to the assistant
+        // You can use vapi.send() to send the questions to the assistant
+      }
+    } catch (error) {
+      console.error('Error pre-generating interview:', error);
+    }
+  };
 
   const handleDisconnect = async () => {
     setCallStatus(CallStatus.FINISHED) ;
