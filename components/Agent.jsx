@@ -4,23 +4,18 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { vapi } from "@/lib/vapi.sdk";
+
 const CallStatus = {
   INACTIVE: "INACTIVE",
   ACTIVE: "ACTIVE",
   CONNECTING: "CONNECTING",
   FINISHED: "FINISHED",
 };
+
 const Agent = ({ userName, userId, type }) => {
   const router = useRouter();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callStatus, setCallStatus] = useState(CallStatus.INACTIVE);
-
-  //Here the transcript messages will come from vapi , For testing we are using some dummy ones
-  // const messages = [
-  //   "What is your name ?",
-  //   "My name is Vaibhav Patil , Nice to meet you .",
-  // ];
-
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
@@ -85,21 +80,24 @@ const Agent = ({ userName, userId, type }) => {
         type: error.type,
         stage: error.stage,
         error: error.error,
-        context: error.context
+        context: error.context,
+        action: error.action,
+        errorMsg: error.errorMsg
       });
       
-      // Try to extract the actual error response
-      if (error.error && error.error instanceof Response) {
-        try {
-          const errorText = await error.error.text();
-          console.error("Actual error response:", errorText);
-        } catch (e) {
-          console.error("Could not read error response:", e);
-        }
+      // Handle specific error types
+      if (error.action === 'error' && error.errorMsg === 'Meeting has ended') {
+        console.error("Meeting ended unexpectedly. This usually means:");
+        console.error("1. Assistant configuration issue");
+        console.error("2. Tool not properly set up");
+        console.error("3. API endpoint not accessible");
+        console.error("4. Assistant ID incorrect");
+        
+        alert("Call ended unexpectedly. Please check your Assistant configuration in Vapi dashboard.");
       }
       
       setCallStatus(CallStatus.INACTIVE);
-      alert(`Call error: ${error.error?.message || error.message || 'Unknown error'}`);
+      alert(`Call error: ${error.errorMsg || error.error?.message || error.message || 'Unknown error'}`);
     };
 
     vapi.on("call-start", onCallStart);
@@ -109,7 +107,6 @@ const Agent = ({ userName, userId, type }) => {
     vapi.on("speech-end", onSpeachEnd);
     vapi.on("error", onError);
 
-    //every time we call the eventhandlers in useeffect make sure to remove it in return
     return () => {
       vapi.off("call-start", onCallStart);
       vapi.off("call-end", onCallEnd);
@@ -201,11 +198,8 @@ const Agent = ({ userName, userId, type }) => {
   }
 
   //now getting the latest transcripted message from the user 
-
   const latestMessage = messages[messages.length - 1]?.content ;
-
   const isCallInactiveOrFinished = callStatus === CallStatus.INACTIVE || CallStatus.FINISHED ;
-
 
   return (
     <>
