@@ -6,7 +6,6 @@ const InterviewPage = async () => {
   //Getting the user details
   const user = await getCurrentUser();
 
-
   return (
     <>
       <h3>Interview Generation</h3>

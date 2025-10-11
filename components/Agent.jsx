@@ -34,6 +34,46 @@ const Agent = ({ userName, userId, type }) => {
           return [...prev, newMessage];
         });
       }
+      
+      // Handle tool calls for interview generation
+      if (message.type === "tool-call") {
+        console.log('Tool call received:', message);
+        
+        if (message.toolCall.name === 'generate_interview') {
+          const params = message.toolCall.parameters;
+          console.log('Generating interview with params:', params);
+          
+          // Generate the interview
+          generateInterview(params)
+            .then(result => {
+              console.log('Interview generated successfully:', result);
+              // Send success message to assistant
+              vapi.send({
+                type: 'tool-call-result',
+                toolCallResult: {
+                  result: {
+                    success: true,
+                    message: 'Interview generated successfully! You will be redirected to the home page shortly.',
+                    interviewId: result.interviewId
+                  }
+                }
+              });
+            })
+            .catch(error => {
+              console.error('Error generating interview:', error);
+              // Send error message to assistant
+              vapi.send({
+                type: 'tool-call-result',
+                toolCallResult: {
+                  result: {
+                    success: false,
+                    message: 'Failed to generate interview. Please try again.'
+                  }
+                }
+              });
+            });
+        }
+      }
     };
 
     const onSpeachStart = () => setIsSpeaking(true);
@@ -107,10 +147,6 @@ const Agent = ({ userName, userId, type }) => {
         userId: userId,
       });
       
-      // Pre-generate questions before starting the call
-      console.log('Pre-generating interview questions...');
-      await preGenerateInterview();
-      
       // Use the start method with Assistant ID
       console.log('Starting call with Assistant ID...');
       await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
@@ -121,8 +157,10 @@ const Agent = ({ userName, userId, type }) => {
     }
   }
 
-  const preGenerateInterview = async () => {
+  const generateInterview = async (interviewData) => {
     try {
+      console.log('Generating interview with data:', interviewData);
+      
       // Generate questions using your existing API
       const response = await fetch('/api/vapi/generate', {
         method: 'POST',
@@ -130,22 +168,30 @@ const Agent = ({ userName, userId, type }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          type: 'Mixed', // You can make this dynamic
-          role: 'Software Developer', // You can make this dynamic
-          level: 'Mid-level', // You can make this dynamic
-          techstack: 'React, JavaScript, Node.js', // You can make this dynamic
+          ...interviewData,
           userid: userId,
+          userName: userName
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Interview questions generated:', result);
-        // Store the questions in state or pass them to the assistant
-        // You can use vapi.send() to send the questions to the assistant
+        console.log('Interview generated successfully:', result);
+        
+        // Redirect to home page after successful generation
+        setTimeout(() => {
+          router.push('/');
+        }, 2000);
+        
+        return result;
+      } else {
+        const error = await response.json();
+        console.error('Error generating interview:', error);
+        throw new Error(error.message || 'Failed to generate interview');
       }
     } catch (error) {
-      console.error('Error pre-generating interview:', error);
+      console.error('Error generating interview:', error);
+      throw error;
     }
   };
 

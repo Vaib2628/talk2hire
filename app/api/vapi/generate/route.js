@@ -12,7 +12,7 @@ export async function GET(){
 
 export async function POST(request) {
 
-    const {type , role , level , techstack , amount , userid} = await request.json() ;
+    const {type , role , level , techstack , amount , userid, userName} = await request.json() ;
 
     try {
         //now we have to generate the texts with generate texts
@@ -41,6 +41,8 @@ export async function POST(request) {
             questions : JSON.parse(questions) , 
             finalized : true , 
             userId : userid,
+            userName: userName || "Candidate",
+            amount: amount || 10,
             coverImage : getRandomInterviewCover(),
             createdAt : new Date().toISOString()
         }

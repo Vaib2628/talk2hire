@@ -5,10 +5,15 @@ import { google } from "@ai-sdk/google";
 
 export async function POST(request) {
   try {
-    const { role, level, techstack, type, userId, userName } = await request.json();
+    const body = await request.json();
+    console.log('Tool call received:', body);
+
+    // Handle both direct calls and Vapi tool calls
+    const { role, level, techstack, type, userId, userName, amount } = body;
 
     // Validate required fields
     if (!role || !level || !techstack || !type || !userId) {
+      console.error('Missing required fields:', { role, level, techstack, type, userId });
       return Response.json({ 
         success: false, 
         message: "Missing required fields: role, level, techstack, type, userId" 
@@ -19,7 +24,7 @@ export async function POST(request) {
     const { text: questions } = await generateText({
       model: google('gemini-2.0-flash-001'),
       prompt: `
-        Prepare questions for job interview ...
+        Prepare ${amount || 10} questions for job interview ...
         The job role is: ${role}.
         The job experience is: ${level}.
         The tech stack used in the job is: ${techstack}.
@@ -48,6 +53,7 @@ export async function POST(request) {
 
     // Store in Firebase
     const docRef = await db.collection("interviews").add(interview);
+    console.log('Interview stored successfully:', docRef.id);
     
     return Response.json({
       success: true,
@@ -59,6 +65,7 @@ export async function POST(request) {
 
   } catch (error) {
     console.error("Error generating interview:", error);
+    console.error("Error stack:", error.stack);
     return Response.json({
       success: false,
       message: "Failed to generate interview",
