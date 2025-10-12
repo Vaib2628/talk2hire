@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/firebase/client";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth-context";
 
 const authFormSchema = (type) => {
   return z.object({
@@ -24,7 +23,6 @@ const authFormSchema = (type) => {
   
 const AuthForm = ({type}) => {
   const router = useRouter();
-  const { checkAuth } = useAuth();
   const formSchema = authFormSchema(type);
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -36,7 +34,6 @@ const AuthForm = ({type}) => {
   });
 
 async function onSubmit(values) {
-    
     try {
       if (type === 'sign-up') {
         const {name , email , password} = values;
@@ -66,7 +63,9 @@ async function onSubmit(values) {
           toast.success('Account created Successfully. Please Sign In');
           
           // Smooth redirect to sign-in
-          router.push('/sign-in');
+          if (typeof window !== 'undefined') {
+            router.push('/sign-in');
+          }
         } catch (err) {
           const code = err?.code;
           if (code === 'auth/email-already-in-use') {
@@ -110,10 +109,11 @@ async function onSubmit(values) {
 
           toast.success("Sign In successfully .")
           
-          // Refresh auth state and redirect
-          setTimeout(async () => {
-            await checkAuth();
-            window.location.replace('/');
+          // Redirect to home page
+          setTimeout(() => {
+            if (typeof window !== 'undefined') {
+              window.location.replace('/');
+            }
           }, 1000);
         } catch (err) {
           const code = err?.code;
