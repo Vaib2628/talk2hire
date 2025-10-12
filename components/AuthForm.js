@@ -10,8 +10,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/firebase/client";
-import { signIn, signUp } from "@/lib/Actions/auth.action";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 const authFormSchema = (type) => {
   return z.object({
@@ -24,6 +24,7 @@ const authFormSchema = (type) => {
   
 const AuthForm = ({type}) => {
   const router = useRouter();
+  const { checkAuth } = useAuth();
   const formSchema = authFormSchema(type);
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -35,8 +36,6 @@ const AuthForm = ({type}) => {
   });
 
 async function onSubmit(values) {
-    console.log('Form submitted with values:', values);
-    console.log('Form type:', type);
     
     try {
       if (type === 'sign-up') {
@@ -44,12 +43,19 @@ async function onSubmit(values) {
         try {
           const userCrediantials = await createUserWithEmailAndPassword(auth , email , password );
 
-          const result = await signUp({
-            uid : userCrediantials.user.uid ,
-            name : name ,
-            email,
-            password
-          })
+          const response = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              uid: userCrediantials.user.uid,
+              name: name,
+              email: email
+            }),
+          });
+          
+          const result = await response.json();
 
           if (!result?.success) {
             alert("Failed to create account ")
@@ -76,9 +82,7 @@ async function onSubmit(values) {
         const {email , password} = values ;
         
         try {
-          console.log('Attempting to sign in with:', email);
           const userCrediantial = await signInWithEmailAndPassword(auth ,email , password)
-          console.log('Firebase auth successful, getting token...');
           const idToken = await userCrediantial.user.getIdToken();
 
           if (!idToken) {
@@ -86,11 +90,18 @@ async function onSubmit(values) {
             return ;
           }
 
-          console.log('Calling server signIn function...');
-          const result = await signIn({
-            email , idToken
-          })
-          console.log('Server signIn result:', result);
+          const response = await fetch('/api/auth/signin', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, idToken }),
+          });
+          
+          const result = await response.json();
+          
+          // Add a small delay to ensure server-side cookie is properly set
+          await new Promise(resolve => setTimeout(resolve, 500));
 
           if (!result?.success) {
             toast.error(result?.message || 'Failed to sign in');
@@ -99,9 +110,11 @@ async function onSubmit(values) {
 
           toast.success("Sign In successfully .")
           
-          // Smooth redirect for all devices
-          router.refresh();
-          router.push('/');
+          // Refresh auth state and redirect
+          setTimeout(async () => {
+            await checkAuth();
+            window.location.replace('/');
+          }, 1000);
         } catch (err) {
           const code = err?.code;
           if (code === 'auth/user-not-found') {
