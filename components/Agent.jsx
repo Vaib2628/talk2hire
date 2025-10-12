@@ -134,8 +134,12 @@ const Agent = ({ userName, userId, type }) => {
       setCallStatus(CallStatus.CONNECTING) ;
       
       // Debug: Check if environment variables are set
+      console.log('=== VAPI DEBUG INFO ===');
       console.log('VAPI_WEB_TOKEN:', process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN ? 'Set' : 'Missing');
       console.log('VAPI_ASSISTANT_ID:', process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID ? 'Set' : 'Missing');
+      console.log('Actual VAPI_WEB_TOKEN:', process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN);
+      console.log('Actual VAPI_ASSISTANT_ID:', process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+      console.log('========================');
       
       if (!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN) {
         throw new Error('VAPI_WEB_TOKEN is not set');
@@ -154,7 +158,25 @@ const Agent = ({ userName, userId, type }) => {
       
       // Use the start method with Assistant ID
       console.log('Starting call with Assistant ID...');
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+      
+      // Test connection first
+      try {
+        await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+        console.log('Call started successfully');
+      } catch (connectionError) {
+        console.error('Connection error:', connectionError);
+        
+        // Try to provide more specific error messages
+        if (connectionError.message?.includes('network') || connectionError.message?.includes('connection')) {
+          throw new Error('Network connection failed. Please check your internet connection and try again.');
+        } else if (connectionError.message?.includes('token') || connectionError.message?.includes('auth')) {
+          throw new Error('Authentication failed. Please check your VAPI token.');
+        } else if (connectionError.message?.includes('assistant')) {
+          throw new Error('Assistant not found. Please check your Assistant ID.');
+        } else {
+          throw connectionError;
+        }
+      }
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus(CallStatus.INACTIVE);

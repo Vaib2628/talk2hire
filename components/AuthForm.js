@@ -58,7 +58,11 @@ async function onSubmit(values) {
           }
 
           toast.success('Account created Successfully. Please Sign In');
-          router.push('/sign-in');
+          
+          // Add delay for mobile devices to ensure toast displays before redirect
+          setTimeout(() => {
+            router.push('/sign-in');
+          }, 1000);
         } catch (err) {
           const code = err?.code;
           if (code === 'auth/email-already-in-use') {
@@ -96,7 +100,19 @@ async function onSubmit(values) {
           }
 
           toast.success("Sign In successfully .")
-          router.push('/');
+          
+          // Add delay for mobile devices to ensure toast displays before redirect
+          setTimeout(() => {
+            router.refresh(); // Refresh to update auth state
+            router.push('/');
+            
+            // Fallback for mobile devices - force navigation if router.push fails
+            setTimeout(() => {
+              if (window.location.pathname.includes('/sign-in')) {
+                window.location.href = '/';
+              }
+            }, 500);
+          }, 1000);
         } catch (err) {
           const code = err?.code;
           if (code === 'auth/user-not-found') {
