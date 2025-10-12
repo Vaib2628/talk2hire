@@ -37,9 +37,17 @@ const Agent = ({ userName, userId, type }) => {
         if (message.toolCall.name === 'generate_interview') {
           const params = message.toolCall.parameters;
           console.log('Generating interview with params:', params);
+          console.log('Adding user info:', { userId, userName });
+          
+          // Automatically add user information to the interview data
+          const interviewDataWithUser = {
+            ...params,
+            userId: userId,
+            userName: userName
+          };
           
           // Generate the interview
-          generateInterview(params)
+          generateInterview(interviewDataWithUser)
             .then(result => {
               console.log('Interview generated successfully:', result);
               // Send success message to assistant
@@ -158,17 +166,13 @@ const Agent = ({ userName, userId, type }) => {
     try {
       console.log('Generating interview with data:', interviewData);
       
-      // Generate questions using your existing API
-      const response = await fetch('/api/vapi/generate', {
+      // Generate questions using the correct API endpoint
+      const response = await fetch('/api/vapi/functions/generate-interview', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...interviewData,
-          userid: userId,
-          userName: userName
-        }),
+        body: JSON.stringify(interviewData),
       });
 
       if (response.ok) {
