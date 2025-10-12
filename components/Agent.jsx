@@ -36,8 +36,6 @@ const Agent = ({ userName, userId, type }) => {
         
         if (message.toolCall.name === 'generate_interview') {
           const params = message.toolCall.parameters;
-          console.log('Generating interview with params:', params);
-          console.log('Adding user info:', { userId, userName });
           
           // Automatically add user information to the interview data
           const interviewDataWithUser = {
@@ -49,7 +47,6 @@ const Agent = ({ userName, userId, type }) => {
           // Generate the interview
           generateInterview(interviewDataWithUser)
             .then(result => {
-              console.log('Interview generated successfully:', result);
               // Send success message to assistant
               vapi.send({
                 type: 'tool-call-result',
@@ -63,7 +60,6 @@ const Agent = ({ userName, userId, type }) => {
               });
             })
             .catch(error => {
-              console.error('Error generating interview:', error);
               // Send error message to assistant
               vapi.send({
                 type: 'tool-call-result',
@@ -93,15 +89,11 @@ const Agent = ({ userName, userId, type }) => {
         errorMsg: error.errorMsg
       });
       
-      // Handle specific error types
+      // Handle specific error types - don't show alert for normal call endings
       if (error.action === 'error' && error.errorMsg === 'Meeting has ended') {
-        console.error("Meeting ended unexpectedly. This usually means:");
-        console.error("1. Assistant configuration issue");
-        console.error("2. Tool not properly set up");
-        console.error("3. API endpoint not accessible");
-        console.error("4. Assistant ID incorrect");
-        
-        alert("Call ended unexpectedly. Please check your Assistant configuration in Vapi dashboard.");
+        // This is a normal call end, don't show error alert
+        setCallStatus(CallStatus.INACTIVE);
+        return;
       }
       
       setCallStatus(CallStatus.INACTIVE);
@@ -133,13 +125,6 @@ const Agent = ({ userName, userId, type }) => {
     try {
       setCallStatus(CallStatus.CONNECTING) ;
       
-      // Debug: Check if environment variables are set
-      console.log('=== VAPI DEBUG INFO ===');
-      console.log('VAPI_WEB_TOKEN:', process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN ? 'Set' : 'Missing');
-      console.log('VAPI_ASSISTANT_ID:', process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID ? 'Set' : 'Missing');
-      console.log('Actual VAPI_WEB_TOKEN:', process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN);
-      console.log('Actual VAPI_ASSISTANT_ID:', process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
-      console.log('========================');
       
       if (!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN) {
         throw new Error('VAPI_WEB_TOKEN is not set');
@@ -149,34 +134,8 @@ const Agent = ({ userName, userId, type }) => {
         throw new Error('VAPI_ASSISTANT_ID is not set. You need to create an Assistant in your Vapi dashboard and use its ID instead of a Workflow ID.');
       }
       
-      console.log('Starting call with:', {
-        assistantId: process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID,
-        assistantIdLength: process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID?.length,
-        userName: userName,
-        userId: userId,
-      });
       
-      // Use the start method with Assistant ID
-      console.log('Starting call with Assistant ID...');
-      
-      // Test connection first
-      try {
-        await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
-        console.log('Call started successfully');
-      } catch (connectionError) {
-        console.error('Connection error:', connectionError);
-        
-        // Try to provide more specific error messages
-        if (connectionError.message?.includes('network') || connectionError.message?.includes('connection')) {
-          throw new Error('Network connection failed. Please check your internet connection and try again.');
-        } else if (connectionError.message?.includes('token') || connectionError.message?.includes('auth')) {
-          throw new Error('Authentication failed. Please check your VAPI token.');
-        } else if (connectionError.message?.includes('assistant')) {
-          throw new Error('Assistant not found. Please check your Assistant ID.');
-        } else {
-          throw connectionError;
-        }
-      }
+      await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus(CallStatus.INACTIVE);
@@ -186,8 +145,6 @@ const Agent = ({ userName, userId, type }) => {
 
   const generateInterview = async (interviewData) => {
     try {
-      console.log('Generating interview with data:', interviewData);
-      
       // Generate questions using the correct API endpoint
       const response = await fetch('/api/vapi/functions/generate-interview', {
         method: 'POST',
@@ -199,7 +156,6 @@ const Agent = ({ userName, userId, type }) => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Interview generated successfully:', result);
         
         // Redirect to home page after successful generation
         setTimeout(() => {
@@ -209,11 +165,9 @@ const Agent = ({ userName, userId, type }) => {
         return result;
       } else {
         const error = await response.json();
-        console.error('Error generating interview:', error);
         throw new Error(error.message || 'Failed to generate interview');
       }
     } catch (error) {
-      console.error('Error generating interview:', error);
       throw error;
     }
   };
