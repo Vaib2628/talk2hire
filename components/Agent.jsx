@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { vapi } from "@/lib/vapi.sdk";
+import { useAuth } from "@/lib/auth-context";
 
 const CallStatus = {
   INACTIVE: "INACTIVE",
@@ -12,11 +13,27 @@ const CallStatus = {
   FINISHED: "FINISHED",
 };
 
-const Agent = ({ userName, userId, type }) => {
+const Agent = ({ type }) => {
   const router = useRouter();
+  const { user, isLoading } = useAuth();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callStatus, setCallStatus] = useState(CallStatus.INACTIVE);
   const [messages, setMessages] = useState([]);
+  
+  const userName = user?.name;
+  const userId = user?.id;
+  
+  // Show loading state while user data is being fetched
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-100 mx-auto"></div>
+          <p className="mt-4 text-primary-100">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const onCallStart = () => setCallStatus(CallStatus.ACTIVE);
