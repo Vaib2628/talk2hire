@@ -1,22 +1,38 @@
-import { db } from "@/firebase/admin";
+import { auth, db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { cookies } from "next/headers";
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    console.log('Tool call received:', body);
+    console.log('Interview generation request received:', body);
+
+    // Derive authenticated user from session cookie to prevent spoofed/default values
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
+    if (!sessionCookie) {
+      return Response.json({ success: false, message: "Unauthenticated" }, { status: 401 });
+    }
+    const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
+    const userRecord = await db.collection('users').doc(decodedToken.uid).get();
+    if (!userRecord.exists) {
+      return Response.json({ success: false, message: "User not found" }, { status: 401 });
+    }
+    const resolvedUserId = userRecord.id;
+    const resolvedUserName = userRecord.data()?.name;
+    console.log('Resolved authenticated user:', { userId: resolvedUserId, userName: resolvedUserName });
 
     // Handle both direct calls and Vapi tool calls
-    const { role, level, techstack, type, userId, userName, amount } = body;
+    const { role, level, techstack, type, amount } = body;
 
     // Validate required fields
-    if (!role || !level || !techstack || !type || !userId) {
-      console.error('Missing required fields:', { role, level, techstack, type, userId });
+    if (!role || !level || !techstack || !type) {
+      console.error('Missing required fields:', { role, level, techstack, type });
       return Response.json({ 
         success: false, 
-        message: "Missing required fields: role, level, techstack, type, userId" 
+        message: "Missing required fields: role, level, techstack, type" 
       }, { status: 400 });
     }
 
@@ -45,8 +61,8 @@ export async function POST(request) {
       techstack: techstack.split(","),
       questions: JSON.parse(questions),
       finalized: true,
-      userId: userId,
-      userName: userName,
+      userId: resolvedUserId,
+      userName: resolvedUserName,
       coverImage: getRandomInterviewCover(),
       createdAt: new Date().toISOString()
     };
