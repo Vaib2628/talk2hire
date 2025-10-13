@@ -1,7 +1,8 @@
-import { db } from "@/firebase/admin";
+import { auth, db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { cookies } from "next/headers";
 
 export async function GET(){
     return Response.json({success : true , message:"Hey this api is working fine." } , {status : 200});
@@ -12,11 +13,25 @@ export async function GET(){
 
 export async function POST(request) {
 
-    const {type , role , level , techstack , amount , userid, userName} = await request.json() ;
+    const {type , role , level , techstack , amount } = await request.json() ;
 
     try {
+        // Derive authenticated user from session cookie
+        const cookieStore = await cookies();
+        const sessionCookie = cookieStore.get('session')?.value;
+        if (!sessionCookie) {
+            return Response.json({ success: false, message: "Unauthenticated" }, { status: 401 });
+        }
+        const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
+        const userRecord = await db.collection('users').doc(decodedToken.uid).get();
+        if (!userRecord.exists) {
+            return Response.json({ success: false, message: "User not found" }, { status: 401 });
+        }
+        const { id: userId } = { id: userRecord.id };
+        const { name: userName } = userRecord.data();
+
         //now we have to generate the texts with generate texts
-        if (!type || !role || !level || !techstack || !userid) {
+        if (!type || !role || !level || !techstack) {
             return Response.json({ success: false, message: "Missing required fields" }, { status: 400 });
         }
         const { text : questions } = await generateText ({
@@ -40,8 +55,8 @@ export async function POST(request) {
             techstack : techstack.split(","),
             questions : JSON.parse(questions) , 
             finalized : true , 
-            userId : userid,
-            userName: userName || "Candidate",
+            userId : userId,
+            userName: userName,
             amount: amount || 10,
             coverImage : getRandomInterviewCover(),
             createdAt : new Date().toISOString()

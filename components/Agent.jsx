@@ -19,9 +19,9 @@ const Agent = ({ type }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callStatus, setCallStatus] = useState(CallStatus.INACTIVE);
   const [messages, setMessages] = useState([]);
-  
   const userName = user?.name;
   const userId = user?.id;
+
   
   // Show loading state while user data is being fetched
   if (isLoading) {
@@ -60,6 +60,8 @@ const Agent = ({ type }) => {
             userId: userId,
             userName: userName
           };
+
+          console.log(interviewDataWithUser, 'interviewDataWithUser')
           
           // Generate the interview
           generateInterview(interviewDataWithUser)
@@ -170,6 +172,7 @@ const Agent = ({ type }) => {
         },
         body: JSON.stringify(interviewData),
       });
+
 
       if (response.ok) {
         const result = await response.json();
