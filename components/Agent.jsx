@@ -16,7 +16,7 @@ const CallStatus = {
 
 const Agent = ({ type }) => {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, checkAuth } = useAuth();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callStatus, setCallStatus] = useState(CallStatus.INACTIVE);
   const [messages, setMessages] = useState([]);
@@ -52,6 +52,23 @@ const Agent = ({ type }) => {
       if (message.type === "function-call" || message.type === "tool-call") {
         const callName = message.functionCall?.name || message.toolCall?.name;
         const params = message.functionCall?.parameters || message.toolCall?.parameters;
+
+        // If assistant asks for user info explicitly, return it
+        if (callName === 'get_user' || callName === 'get_user_info' || callName === 'resolve_user') {
+          const resultEnvelopeType = message.type === 'tool-call' ? 'tool-call-result' : 'function-call-result';
+          vapi.send({
+            type: resultEnvelopeType,
+            [resultEnvelopeType]: {
+              result: {
+                success: true,
+                userId,
+                userName
+              }
+            }
+          });
+          return;
+        }
+
         if (callName === 'generate_interview') {
           
           // Automatically add user information to the interview data
@@ -67,9 +84,10 @@ const Agent = ({ type }) => {
           generateInterview(interviewDataWithUser)
             .then(result => {
               // Send success message to assistant
+              const resultEnvelopeType = message.type === 'tool-call' ? 'tool-call-result' : 'function-call-result';
               vapi.send({
-                type: 'function-call-result',
-                functionCallResult: {
+                type: resultEnvelopeType,
+                [resultEnvelopeType]: {
                   result: {
                     success: true,
                     message: 'Interview generated successfully! You will be redirected to the home page shortly.',
@@ -80,9 +98,10 @@ const Agent = ({ type }) => {
             })
             .catch(error => {
               // Send error message to assistant
+              const resultEnvelopeType = message.type === 'tool-call' ? 'tool-call-result' : 'function-call-result';
               vapi.send({
-                type: 'function-call-result',
-                functionCallResult: {
+                type: resultEnvelopeType,
+                [resultEnvelopeType]: {
                   result: {
                     success: false,
                     message: 'Failed to generate interview. Please try again.'
@@ -144,6 +163,9 @@ const Agent = ({ type }) => {
     try {
       setCallStatus(CallStatus.CONNECTING) ;
       
+      // Refresh auth to ensure session cookies are fresh
+      try { await checkAuth(); } catch {}
+
       
       if (!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN) {
         throw new Error('VAPI_WEB_TOKEN is not set');

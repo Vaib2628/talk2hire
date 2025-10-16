@@ -12,17 +12,34 @@ export async function POST(request) {
     // Derive authenticated user from session cookie to prevent spoofed/default values
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('session')?.value;
-    if (!sessionCookie) {
+
+    let resolvedUserId = null;
+    let resolvedUserName = null;
+
+    if (sessionCookie) {
+      try {
+        const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
+        const userRecord = await db.collection('users').doc(decodedToken.uid).get();
+        if (userRecord.exists) {
+          resolvedUserId = userRecord.id;
+          resolvedUserName = userRecord.data()?.name;
+        }
+      } catch (e) {
+        console.warn('Session verification failed:', e?.message);
+      }
+    }
+
+    // Development/explicit override: allow body-provided identity only if enabled
+    if (!resolvedUserId && process.env.ALLOW_UNAUTH_INTERVIEW === 'true') {
+      resolvedUserId = body.userId || null;
+      resolvedUserName = body.userName || null;
+      console.log('Using body-provided identity under ALLOW_UNAUTH_INTERVIEW');
+    }
+
+    if (!resolvedUserId) {
       return Response.json({ success: false, message: "Unauthenticated" }, { status: 401 });
     }
-    const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
-    const userRecord = await db.collection('users').doc(decodedToken.uid).get();
-    if (!userRecord.exists) {
-      return Response.json({ success: false, message: "User not found" }, { status: 401 });
-    }
-    const resolvedUserId = userRecord.id;
-    const resolvedUserName = userRecord.data()?.name;
-    console.log('Resolved authenticated user:', { userId: resolvedUserId, userName: resolvedUserName });
+    console.log('Resolved user for interview generation:', { userId: resolvedUserId, userName: resolvedUserName });
 
     // Handle both direct calls and Vapi tool calls
     const { role, level, techstack, type, amount, userName: requestedUserName } = body;
