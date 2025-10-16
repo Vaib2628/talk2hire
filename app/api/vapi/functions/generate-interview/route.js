@@ -29,20 +29,13 @@ export async function POST(request) {
       }
     }
 
-    // Development/explicit override: allow body-provided identity only if enabled
-    if (!resolvedUserId && process.env.ALLOW_UNAUTH_INTERVIEW === 'true') {
-      resolvedUserId = body.userId || null;
-      resolvedUserName = body.userName || null;
-      console.log('Using body-provided identity under ALLOW_UNAUTH_INTERVIEW');
-    }
-
     if (!resolvedUserId) {
       return Response.json({ success: false, message: "Unauthenticated" }, { status: 401 });
     }
     console.log('Resolved user for interview generation:', { userId: resolvedUserId, userName: resolvedUserName });
 
     // Handle both direct calls and Vapi tool calls
-    const { role, level, techstack, type, amount, userName: requestedUserName } = body;
+    const { role, level, techstack, type, amount } = body;
 
     // Validate required fields
     if (!role || !level || !techstack || !type) {
@@ -78,8 +71,8 @@ export async function POST(request) {
       techstack: techstack.split(","),
       questions: JSON.parse(questions),
       finalized: true,
-      userId: resolvedUserId, // enforce authenticated userId
-      userName: requestedUserName || resolvedUserName,
+      userId: resolvedUserId,
+      userName: resolvedUserName,
       coverImage: getRandomInterviewCover(),
       createdAt: new Date().toISOString()
     };
