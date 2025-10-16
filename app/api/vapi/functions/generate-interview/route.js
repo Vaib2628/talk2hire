@@ -100,7 +100,7 @@ export async function POST(request) {
       questions: JSON.parse(questions),
       finalized: true,
       userId: resolvedUserId,
-      userName: resolvedUserName,
+      userName: resolvedUserName || body.userName || 'User',
       coverImage: getRandomInterviewCover(),
       createdAt: new Date().toISOString()
     };

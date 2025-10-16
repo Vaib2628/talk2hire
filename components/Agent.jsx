@@ -55,7 +55,7 @@ const Agent = ({ type }) => {
         if (callName === 'generate_interview') {
           
           // Automatically add user information to the interview data
-          const payload = { ...params };
+          const payload = { ...params, userId, userName };
 
           console.log(payload, 'generateInterview payload')
           
