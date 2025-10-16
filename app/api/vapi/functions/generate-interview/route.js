@@ -25,7 +25,7 @@ export async function POST(request) {
     console.log('Resolved authenticated user:', { userId: resolvedUserId, userName: resolvedUserName });
 
     // Handle both direct calls and Vapi tool calls
-    const { role, level, techstack, type, amount } = body;
+    const { role, level, techstack, type, amount, userName: requestedUserName } = body;
 
     // Validate required fields
     if (!role || !level || !techstack || !type) {
@@ -61,8 +61,8 @@ export async function POST(request) {
       techstack: techstack.split(","),
       questions: JSON.parse(questions),
       finalized: true,
-      userId: resolvedUserId,
-      userName: resolvedUserName,
+      userId: resolvedUserId, // enforce authenticated userId
+      userName: requestedUserName || resolvedUserName,
       coverImage: getRandomInterviewCover(),
       createdAt: new Date().toISOString()
     };

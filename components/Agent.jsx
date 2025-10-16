@@ -153,8 +153,49 @@ const Agent = ({ type }) => {
         throw new Error('VAPI_ASSISTANT_ID is not set. You need to create an Assistant in your Vapi dashboard and use its ID instead of a Workflow ID.');
       }
       
-      
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+      // Ensure secure context for WebRTC (required on most browsers except localhost)
+      if (typeof window !== 'undefined') {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isSecure = window.location.protocol === 'https:';
+        if (!isSecure && !isLocalhost) {
+          throw new Error('WebRTC requires HTTPS. Please use https or run on localhost.');
+        }
+      }
+
+      // Pre-flight mic permission request to avoid WebRTC suppression
+      try {
+        if (navigator?.mediaDevices?.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Immediately stop tracks; Vapi will handle its own capture
+          stream.getTracks().forEach(t => t.stop());
+        }
+      } catch (permErr) {
+        throw new Error('Microphone permission is required to start the call. Please allow mic access and try again.');
+      }
+
+      // Try starting the call, retry once if suppressed
+      try {
+        await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+      } catch (err) {
+        const message = err?.errorMsg || err?.message || '';
+        const suppressed = typeof message === 'string' && message.toLowerCase().includes('suppressed');
+        if (suppressed) {
+          // Small delay and retry once after ensuring any audio context is resumed
+          try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              const ctx = new AudioCtx();
+              await ctx.resume();
+              // Close immediately to avoid leaks; this only nudges user gesture state on some browsers
+              if (ctx.close) await ctx.close();
+            }
+          } catch {}
+          await new Promise(r => setTimeout(r, 150));
+          await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+        } else {
+          throw err;
+        }
+      }
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus(CallStatus.INACTIVE);
@@ -167,6 +208,7 @@ const Agent = ({ type }) => {
       // Generate questions using the correct API endpoint
       const response = await fetch('/api/vapi/functions/generate-interview', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
