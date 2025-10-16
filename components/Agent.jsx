@@ -198,7 +198,20 @@ const Agent = ({ type }) => {
         }
       }
 
-      // No additional context injection; server derives auth from session
+      // Instruct assistant not to ask for auth; server resolves identity
+      try {
+        vapi.send({
+          type: 'add-message',
+          message: {
+            role: 'system',
+            content: [
+              'DO NOT ask for user id or user name. The backend resolves identity from session or server key.',
+              'When generating an interview, only collect: role, level, techstack, and type.',
+              'Call generate_interview with those parameters only.'
+            ].join(' ')
+          }
+        });
+      } catch {}
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus(CallStatus.INACTIVE);
