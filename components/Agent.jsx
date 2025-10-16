@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { vapi } from "@/lib/vapi.sdk";
 import { useAuth } from "@/lib/auth-context";
+import { getInterviewContext, createInterviewPrompt } from "@/lib/vapi-helpers";
 
 const CallStatus = {
   INACTIVE: "INACTIVE",
@@ -47,12 +48,11 @@ const Agent = ({ type }) => {
         });
       }
       
-      // Handle tool calls for interview generation
-      if (message.type === "tool-call") {
-        console.log('Tool call received:', message);
-        
-        if (message.toolCall.name === 'generate_interview') {
-          const params = message.toolCall.parameters;
+      // Handle function/tool calls for interview generation
+      if (message.type === "function-call" || message.type === "tool-call") {
+        const callName = message.functionCall?.name || message.toolCall?.name;
+        const params = message.functionCall?.parameters || message.toolCall?.parameters;
+        if (callName === 'generate_interview') {
           
           // Automatically add user information to the interview data
           const interviewDataWithUser = {
@@ -68,8 +68,8 @@ const Agent = ({ type }) => {
             .then(result => {
               // Send success message to assistant
               vapi.send({
-                type: 'tool-call-result',
-                toolCallResult: {
+                type: 'function-call-result',
+                functionCallResult: {
                   result: {
                     success: true,
                     message: 'Interview generated successfully! You will be redirected to the home page shortly.',
@@ -81,8 +81,8 @@ const Agent = ({ type }) => {
             .catch(error => {
               // Send error message to assistant
               vapi.send({
-                type: 'tool-call-result',
-                toolCallResult: {
+                type: 'function-call-result',
+                functionCallResult: {
                   result: {
                     success: false,
                     message: 'Failed to generate interview. Please try again.'
@@ -196,6 +196,19 @@ const Agent = ({ type }) => {
           throw err;
         }
       }
+
+      // Inject authenticated user context to assistant immediately after call start
+      try {
+        const context = getInterviewContext(userName, userId, type);
+        const systemPrompt = createInterviewPrompt(context);
+        vapi.send({
+          type: 'add-message',
+          message: {
+            role: 'system',
+            content: systemPrompt
+          }
+        });
+      } catch {}
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus(CallStatus.INACTIVE);
