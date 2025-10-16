@@ -9,20 +9,48 @@ export async function POST(request) {
     const body = await request.json();
     console.log('Interview generation request received:', body);
 
-    // Derive authenticated user from session cookie to prevent spoofed/default values
+    // Derive authenticated user from either a trusted Vapi server key or session cookie
+    const vapiKeyHeader = request.headers.get('x-vapi-key');
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('session')?.value;
 
     let resolvedUserId = null;
     let resolvedUserName = null;
 
-    if (sessionCookie) {
+    // 1) Trusted server-to-server call from Vapi (when tools run on Vapi servers)
+    if (!resolvedUserId && vapiKeyHeader && process.env.VAPI_SERVER_KEY && vapiKeyHeader === process.env.VAPI_SERVER_KEY) {
+      resolvedUserId = body.userId || null;
+      resolvedUserName = body.userName || null;
+      console.log('Using Vapi server key for identity');
+    }
+
+    // 2) Session-based identity (when tools are forwarded to client and browser calls this API)
+    if (!resolvedUserId && sessionCookie) {
       try {
         const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
-        const userRecord = await db.collection('users').doc(decodedToken.uid).get();
-        if (userRecord.exists) {
-          resolvedUserId = userRecord.id;
-          resolvedUserName = userRecord.data()?.name;
+        const uid = decodedToken.uid;
+
+        let userDoc = await db.collection('users').doc(uid).get();
+        if (!userDoc.exists) {
+          // Auto-provision user document from Firebase Auth if missing
+          try {
+            const authUser = await auth.getUser(uid);
+            const name = authUser.displayName || authUser.email?.split('@')[0] || 'User';
+            const email = authUser.email || '';
+            await db.collection('users').doc(uid).set({
+              name,
+              email,
+              createdAt: new Date().toISOString()
+            });
+            userDoc = await db.collection('users').doc(uid).get();
+          } catch (provisionErr) {
+            console.warn('Failed to auto-provision user doc:', provisionErr?.message);
+          }
+        }
+
+        if (userDoc.exists) {
+          resolvedUserId = userDoc.id;
+          resolvedUserName = userDoc.data()?.name;
         }
       } catch (e) {
         console.warn('Session verification failed:', e?.message);
