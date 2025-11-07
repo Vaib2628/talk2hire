@@ -46,50 +46,6 @@ const Agent = ({ type }) => {
           return [...prev, newMessage];
         });
       }
-      
-      // Handle tool calls for interview generation
-      if (message.type === "tool-call") {
-        console.log('Tool call received:', message);
-        
-        if (message.toolCall.name === 'generate_interview') {
-          const params = message.toolCall.parameters;
-          
-          // Automatically add user information to the interview data
-          const interviewDataWithUser = {
-            ...params,
-            userId: userId,
-            userName: userName
-          };
-          
-          // Generate the interview
-          generateInterview(interviewDataWithUser)
-            .then(result => {
-              // Send success message to assistant
-              vapi.send({
-                type: 'tool-call-result',
-                toolCallResult: {
-                  result: {
-                    success: true,
-                    message: 'Interview generated successfully! You will be redirected to the home page shortly.',
-                    interviewId: result.interviewId
-                  }
-                }
-              });
-            })
-            .catch(error => {
-              // Send error message to assistant
-              vapi.send({
-                type: 'tool-call-result',
-                toolCallResult: {
-                  result: {
-                    success: false,
-                    message: 'Failed to generate interview. Please try again.'
-                  }
-                }
-              });
-            });
-        }
-      }
     };
 
     const onSpeachStart = () => setIsSpeaking(true);
@@ -151,8 +107,18 @@ const Agent = ({ type }) => {
         throw new Error('VAPI_ASSISTANT_ID is not set. You need to create an Assistant in your Vapi dashboard and use its ID instead of a Workflow ID.');
       }
       
+      const assistantOverrides = {
+        recordingEnabled: false,
+        variableValues: {
+          userId: userId,
+          userName: userName,
+        },
+      };
       
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID);
+      await vapi.start(
+        process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID,
+        assistantOverrides,
+      );
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus(CallStatus.INACTIVE);
@@ -160,34 +126,7 @@ const Agent = ({ type }) => {
     }
   }
 
-  const generateInterview = async (interviewData) => {
-    try {
-      // Generate questions using the correct API endpoint
-      const response = await fetch('/api/vapi/functions/generate-interview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(interviewData),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        
-        // Redirect to home page after successful generation
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
-        
-        return result;
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to generate interview');
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
+  
 
   const handleDisconnect = async () => {
     setCallStatus(CallStatus.FINISHED) ;
