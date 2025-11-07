@@ -9,14 +9,14 @@ export async function POST(request) {
     console.log('Tool call received:', body);
 
     // Handle both direct calls and Vapi tool calls
-    const { role, level, techstack, type, userId, userName, amount } = body;
+    const { role, level, techstack, type, userid, username, amount } = body;
 
     // Validate required fields
-    if (!role || !level || !techstack || !type || !userId) {
-      console.error('Missing required fields:', { role, level, techstack, type, userId });
+    if (!role || !level || !techstack || !type || !userid) {
+      console.error('Missing required fields:', { role, level, techstack, type, userid });
       return Response.json({ 
         success: false, 
-        message: "Missing required fields: role, level, techstack, type, userId" 
+        message: "Missing required fields: role, level, techstack, type, userid" 
       }, { status: 400 });
     }
 
@@ -45,8 +45,8 @@ export async function POST(request) {
       techstack: techstack.split(","),
       questions: JSON.parse(questions),
       finalized: true,
-      userId: userId,
-      userName: userName,
+      userId: userid,
+      userName: username,
       coverImage: getRandomInterviewCover(),
       createdAt: new Date().toISOString()
     };

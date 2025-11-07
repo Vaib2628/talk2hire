@@ -19,9 +19,10 @@ const Agent = ({ type }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callStatus, setCallStatus] = useState(CallStatus.INACTIVE);
   const [messages, setMessages] = useState([]);
-  
   const userName = user?.name;
   const userId = user?.id;
+
+  console.log(userName , userId);
   
   // Show loading state while user data is being fetched
   if (isLoading) {
@@ -110,8 +111,8 @@ const Agent = ({ type }) => {
       const assistantOverrides = {
         recordingEnabled: false,
         variableValues: {
-          userId: userId,
-          userName: userName,
+          userid: userId,
+          username: userName,
         },
       };
       
