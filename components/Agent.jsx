@@ -108,18 +108,16 @@ const Agent = ({ type }) => {
         throw new Error('VAPI_ASSISTANT_ID is not set. You need to create an Assistant in your Vapi dashboard and use its ID instead of a Workflow ID.');
       }
       
-      const assistantOverrides = {
-        recordingEnabled: false,
-        variableValues: {
-          userid: userId,
-          username: userName,
+      await vapi.start({
+        assistantId: process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID,
+        assistantOverrides: {
+          recordingEnabled: false,
+          variableValues: {
+            userid: userId,
+            username: userName,
+          },
         },
-      };
-      
-      await vapi.start(
-        process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID,
-        assistantOverrides,
-      );
+      });      
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus(CallStatus.INACTIVE);
