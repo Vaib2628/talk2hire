@@ -3,6 +3,10 @@ import { getRandomInterviewCover } from "@/lib/utils";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 
+export async function GET(){
+  return Response.json({success : true , message:"Hey this api is working fine." } , {status : 200});
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
