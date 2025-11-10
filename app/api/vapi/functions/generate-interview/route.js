@@ -1,53 +1,44 @@
-import { db } from "@/firebase/admin";
-import { getRandomInterviewCover } from "@/lib/utils";
-import { generateText } from "ai";
-import { google } from "@ai-sdk/google";
-
-export async function GET(){
-  return Response.json({success : true , message:"Hey this api is working fine." } , {status : 200});
-}
-
 export async function POST(request) {
   try {
     const body = await request.json();
     console.log('Tool call received:', body);
 
-    // Handle both direct calls and Vapi tool calls
     const { role, level, techstack, type, userid, username, amount } = body;
 
-    // Validate required fields
     if (!role || !level || !techstack || !type || !userid) {
-      console.error('Missing required fields:', { role, level, techstack, type, userid });
       return Response.json({ 
         success: false, 
-        message: "Missing required fields: role, level, techstack, type, userid" 
+        message: "Missing required fields" 
       }, { status: 400 });
     }
 
-    // Generate questions using your existing logic
     const { text: questions } = await generateText({
       model: google('gemini-2.0-flash-001'),
       prompt: `
-        Prepare ${amount || 10} questions for job interview ...
-        The job role is: ${role}.
-        The job experience is: ${level}.
-        The tech stack used in the job is: ${techstack}.
-        The focus between the behavioural and technical questions should be lean towards: ${type}.
-        Please return only the questions without any additional texts.
-        The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters that might break the voice assistant.
-        Return the questions formatted like this.
-        ["Question 1", "Question 2", "Question 3"]
-        Thank you!
+        Prepare ${amount || 10} interview questions.
+        Role: ${role}
+        Level: ${level}
+        Tech Stack: ${techstack}
+        Type: ${type === 'Technical' ? 'mostly technical' : type === 'Behavioral' ? 'mostly behavioral' : 'mixed'}
+        Return ONLY a JSON array like: ["Q1", "Q2", ...]
+        No extra text. No markdown. No numbering.
       `
     });
 
-    // Create interview object
+    let parsedQuestions;
+    try {
+      parsedQuestions = JSON.parse(questions);
+    } catch (e) {
+      console.error("Failed to parse AI response:", questions);
+      parsedQuestions = questions.split('\n').filter(q => q.trim()).slice(0, amount || 10);
+    }
+
     const interview = {
       role,
       type,
       level,
-      techstack: techstack.split(","),
-      questions: JSON.parse(questions),
+      techstack: techstack.split(",").map(t => t.trim()),
+      questions: parsedQuestions,
       finalized: true,
       userId: userid,
       userName: username,
@@ -55,25 +46,20 @@ export async function POST(request) {
       createdAt: new Date().toISOString()
     };
 
-    // Store in Firebase
     const docRef = await db.collection("interviews").add(interview);
-    console.log('Interview stored successfully:', docRef.id);
-    
+
+    // === ONLY SPEAK THE MESSAGE, QUESTIONS ARE SILENT ===
     return Response.json({
       success: true,
-      message: "Interview generated successfully",
-      interviewId: docRef.id,
-      questions: interview.questions,
-      interview: interview
+      message: "Got it! Starting your interview now...",  // ← SPOKEN
+      questions: parsedQuestions  // ← SILENT, used by Vapi logic
     });
 
   } catch (error) {
-    console.error("Error generating interview:", error);
-    console.error("Error stack:", error.stack);
+    console.error("Error:", error);
     return Response.json({
       success: false,
-      message: "Failed to generate interview",
-      error: error.message
+      message: "Failed to generate interview"
     }, { status: 500 });
   }
 }

@@ -4,10 +4,9 @@ import InterviewCard from "@/components/InterviewCard";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  getCurrentUser,
-  getInterviewsByUserId,
-  getLatestInterviews,
+  getCurrentUser
 } from "@/lib/Actions/auth.action";
+import { getInterviewsByUserId , getLatestInterviews } from "@/lib/Actions/general.action";
 const HomePage = async () => {
   const userRecord = await getCurrentUser();
 
@@ -15,9 +14,6 @@ const HomePage = async () => {
     await getInterviewsByUserId(userRecord?.id),
     await getLatestInterviews({ userId: userRecord?.id }),
   ]);
-  // this below will depend on each other , but we want to make it paraller
-  // const userInterviews = await getInterviewsByUserId(userRecord?.id);
-  // const latestInterviews = await getLatestInterviews({userId : userRecord?.id})
 
   const hasPastInterviews = userInterviews?.length > 0;
   const hasUpcomingInterviews = latestInterviews?.length > 0;
