@@ -4,7 +4,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { vapi } from "@/lib/vapi.sdk";
-import { useAuth } from "@/lib/auth-context";  // ← YOUR CUSTOM AUTH
+import { useAuth } from "@/lib/auth-context"; // ← YOUR CUSTOM AUTH
+import Router from "next/router";
+import { interviewer } from "@/constants";
 
 const CallStatus = {
   INACTIVE: "INACTIVE",
@@ -13,35 +15,42 @@ const CallStatus = {
   FINISHED: "FINISHED",
 };
 
-const Agent = ({ type }) => {
+const Agent = ({ type, interviewId, questions, userName, userId }) => {
   const router = useRouter();
-  const { user, isLoading } = useAuth();  // ← REAL FIREBASE USER
-
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callStatus, setCallStatus] = useState(CallStatus.INACTIVE);
   const [messages, setMessages] = useState([]);
   const hasStartedRef = useRef(false);
 
   // === REAL USER DATA (FALLBACK IF NOT LOGGED IN) ===
-  const userName = user?.name || "Guest";
-  const userId = user?.id || `guest_${Date.now()}`;
+  // const userName = user?.name || "Guest";
+  // const userId = user?.id || `guest_${Date.now()}`;
 
   // === NUCLEAR BYPASS (UNCHANGED) ===
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try { delete window.navigator.__proto__.userAgentData; } catch (e) {}
+    try {
+      delete window.navigator.__proto__.userAgentData;
+    } catch (e) {}
 
     Object.defineProperty(navigator, "userAgent", {
-      value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+      value:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
       writable: false,
       configurable: true,
     });
-    Object.defineProperty(navigator, "webdriver", { get: () => false, configurable: true });
+    Object.defineProperty(navigator, "webdriver", {
+      get: () => false,
+      configurable: true,
+    });
     Object.defineProperty(navigator, "plugins", {
       get: () => [{ name: "Chrome PDF Plugin" }, { name: "Chrome PDF Viewer" }],
       configurable: true,
     });
-    Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"], configurable: true });
+    Object.defineProperty(navigator, "languages", {
+      get: () => ["en-US", "en"],
+      configurable: true,
+    });
 
     window.chrome = window.chrome || {};
     window.chrome.runtime = window.chrome.runtime || {};
@@ -67,7 +76,10 @@ const Agent = ({ type }) => {
     const onCallEnd = () => setCallStatus(CallStatus.FINISHED);
     const onMessage = (msg) => {
       if (msg.type === "transcript" && msg.transcriptType === "final") {
-        setMessages(prev => [...prev, { role: msg.role, content: msg.transcript }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: msg.role, content: msg.transcript },
+        ]);
       }
     };
     const onSpeechStart = () => setIsSpeaking(true);
@@ -87,31 +99,64 @@ const Agent = ({ type }) => {
       vapi.off("speech-end", onSpeechEnd);
     };
   }, []);
+  //  HANDLING GENERATE FEEDBACK
+
+  const handleGenerateFeedback = async (messages) => {
+    console.log("generate feedback here");
+    const { success, id } = {
+      success: true,
+      id: "feedback-id",
+    };
+
+    //TODO : create a server action that will generate the feedback
+
+    if (success && id) {
+      router.push(`/interview/${interviewId}/feedback`);
+    } else {
+      console.log("Error saving the feedback");
+      router.push("/");
+    }
+  };
 
   // === REDIRECT AFTER END ===
   useEffect(() => {
     if (callStatus === CallStatus.FINISHED) {
-      setTimeout(() => router.push("/"), 2000);
+      if (type === "generate") router.push(`/interview/${interviewId}`);
+      else if (type === "interview") handleGenerateFeedback(messages);
     }
-  }, [callStatus, router]);
+  }, [callStatus, router, type, interviewId]);
 
   // === START CALL — REAL USER VARS ===
   const handleCall = async () => {
-    if (hasStartedRef.current || isLoading) return;
+    if (hasStartedRef.current) return;
     hasStartedRef.current = true;
 
     try {
       setCallStatus(CallStatus.CONNECTING);
       console.log("Starting Vapi with Firebase user:", { userId, userName });
 
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID, {
-        recordingEnabled: false,
-        firstMessage: `Hey ${userName}! What role are you preparing for?`,
-        variableValues: {
-          userid: userId,
-          username: userName,
-        },
-      });
+      if (type === "generate") {
+        await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID, {
+          recordingEnabled: false,
+          firstMessage: `Hey ${userName}! What role are you preparing for?`,
+          variableValues: {
+            userid: userId,
+            username: userName,
+          },
+        });
+      } else {
+        let formattedQuestions = "" ;
+        if ( questions) {
+          formattedQuestions = questions.map((question)=> `- ${question}`).join('\n')
+        }
+
+        await vapi.start(interviewer, {
+          variableValues : {
+            questions : formattedQuestions
+          }
+        })
+      }
+
 
       console.log("Vapi call started with real Firebase user");
     } catch (error) {
@@ -129,33 +174,34 @@ const Agent = ({ type }) => {
   };
 
   const latestMessage = messages[messages.length - 1]?.content;
-  const isCallInactiveOrFinished = callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED;
-
-  // === LOADING STATE (FROM YOUR useAuth) ===
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-100 mx-auto"></div>
-          <p className="mt-4 text-primary-100">Loading user...</p>
-        </div>
-      </div>
-    );
-  }
+  const isCallInactiveOrFinished =
+    callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED;
 
   return (
     <>
       <div className="call-view">
         <div className="card-interviewer">
           <div className="avatar">
-            <Image src="/ai-avatar.png" alt="AI" height={54} width={62} className="object-cover" />
+            <Image
+              src="/ai-avatar.png"
+              alt="AI"
+              height={54}
+              width={62}
+              className="object-cover"
+            />
             {isSpeaking && <span className="animate-speak" />}
           </div>
           <h3>AI Interviewer</h3>
         </div>
         <div className="card-border">
           <div className="card-content">
-            <Image src="/user-avatar.png" height={540} width={540} className="rounded-full object-cover size-[120px]" alt="user" />
+            <Image
+              src="/user-avatar.png"
+              height={540}
+              width={540}
+              className="rounded-full object-cover size-[120px]"
+              alt="user"
+            />
             <h3>{userName}</h3>
           </div>
         </div>
@@ -173,8 +219,13 @@ const Agent = ({ type }) => {
 
       <div className="w-full justify-center flex">
         {callStatus !== "ACTIVE" ? (
-          <button className="relative btn-call" onClick={handleCall} disabled={isLoading}>
-            <span className={cn("absolute animate-ping rounded-full opacity-70", callStatus !== "CONNECTING" && "hidden")} />
+          <button className="relative btn-call" onClick={handleCall}>
+            <span
+              className={cn(
+                "absolute animate-ping rounded-full opacity-70",
+                callStatus !== "CONNECTING" && "hidden"
+              )}
+            />
             <span>{isCallInactiveOrFinished ? "Call" : ". . ."}</span>
           </button>
         ) : (
