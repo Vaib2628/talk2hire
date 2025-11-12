@@ -7,6 +7,7 @@ import { vapi } from "@/lib/vapi.sdk";
 import { useAuth } from "@/lib/auth-context"; // ← YOUR CUSTOM AUTH
 import Router from "next/router";
 import { interviewer } from "@/constants";
+import { createFeedback } from "@/lib/Actions/general.action";
 
 const CallStatus = {
   INACTIVE: "INACTIVE",
@@ -103,14 +104,15 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
 
   const handleGenerateFeedback = async (messages) => {
     console.log("generate feedback here");
-    const { success, id } = {
-      success: true,
-      id: "feedback-id",
-    };
+    const { success, feedbackId } = await createFeedback({
+      interviewId: interviewId,
+      userId : userId,
+      transcript : messages 
+    })
 
     //TODO : create a server action that will generate the feedback
 
-    if (success && id) {
+    if (success && feedbackId) {
       router.push(`/interview/${interviewId}/feedback`);
     } else {
       console.log("Error saving the feedback");
