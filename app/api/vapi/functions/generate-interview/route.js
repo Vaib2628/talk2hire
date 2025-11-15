@@ -7,13 +7,17 @@ import { google } from "@ai-sdk/google";
 export async function POST(request) {
   try {
     const body = await request.json();
-    console.log("Tool call received:", body);
+    if (process.env.NODE_ENV === "development") {
+      console.log("Tool call received:", body);
+    }
 
     const { role, level, techstack, type, userid, username, amount } = body;
 
     // === VALIDATE ALL REQUIRED FIELDS ===
     if (!role || !level || !techstack || !type || !userid || !amount) {
-      console.error("Missing fields:", { role, level, techstack, type, userid, amount });
+      if (process.env.NODE_ENV === "development") {
+        console.error("Missing fields:", { role, level, techstack, type, userid, amount });
+      }
       return Response.json(
         { success: false, message: "Missing required fields" },
         { status: 400 }
@@ -37,7 +41,9 @@ export async function POST(request) {
       `,
     });
 
-    console.log("Gemini raw output:", rawQuestions);
+    if (process.env.NODE_ENV === "development") {
+      console.log("Gemini raw output:", rawQuestions);
+    }
 
     // === PARSE QUESTIONS (ROBUST) ===
     let questions = [];
@@ -48,7 +54,9 @@ export async function POST(request) {
         questions = parsed.slice(0, Number(amount));
       }
     } catch (e) {
-      console.warn("JSON parse failed, using fallback:", e);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("JSON parse failed, using fallback:", e);
+      }
       questions = rawQuestions
         .split("\n")
         .map(line => line.replace(/^\d+\.\s*/, "").trim())
@@ -64,6 +72,7 @@ export async function POST(request) {
     }
 
     // === SAVE TO FIREBASE ===
+    const docRef = db.collection("interviews").doc();
     const interview = {
       role,
       level,
@@ -73,13 +82,15 @@ export async function POST(request) {
       questions,
       userId: userid,
       userName: username,
-      coverImage: getRandomInterviewCover(),
+      coverImage: getRandomInterviewCover(docRef.id),
       createdAt: new Date().toISOString(),
       finalized: true,
     };
 
-    const docRef = await db.collection("interviews").add(interview);
-    console.log("Interview saved with ID:", docRef.id);
+    await docRef.set(interview);
+    if (process.env.NODE_ENV === "development") {
+      console.log("Interview saved with ID:", docRef.id);
+    }
 
     // === RETURN ONLY WHAT VAPI SHOULD SPEAK + ID ===
     return Response.json({
@@ -89,7 +100,9 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error("Generate interview error:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("Generate interview error:", error);
+    }
     return Response.json(
       {
         success: false,

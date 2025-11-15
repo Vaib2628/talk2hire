@@ -2,10 +2,9 @@
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { vapi } from "@/lib/vapi.sdk";
 import { useAuth } from "@/lib/auth-context"; // ← YOUR CUSTOM AUTH
-import Router from "next/router";
 import { interviewer } from "@/constants";
 import { createFeedback } from "@/lib/Actions/general.action";
 
@@ -68,7 +67,9 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
       return originalFetch.apply(this, args);
     };
 
-    console.log("VAPI BYPASS ACTIVE");
+    if (process.env.NODE_ENV === "development") {
+      console.log("VAPI BYPASS ACTIVE");
+    }
   }, []);
 
   // === VAPI LISTENERS ===
@@ -92,11 +93,15 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
       if (error?.message?.toLowerCase().includes("meeting") || 
           error?.message?.toLowerCase().includes("ended") ||
           error?.message?.toLowerCase().includes("call ended")) {
+        if (process.env.NODE_ENV === "development") {
         console.log("Call ended normally");
+      }
         setCallStatus(CallStatus.FINISHED);
         return;
       }
-      console.error("VAPI error:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("VAPI error:", error);
+      }
     };
 
     vapi.on("call-start", onCallStart);
@@ -116,24 +121,25 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
     };
   }, []);
   //  HANDLING GENERATE FEEDBACK
-
-  const handleGenerateFeedback = async (messages) => {
-    console.log("generate feedback here");
+  const handleGenerateFeedback = useCallback(async (messages) => {
+      if (process.env.NODE_ENV === "development") {
+        console.log("generate feedback here");
+      }
     const { success, feedbackId } = await createFeedback({
       interviewId: interviewId,
       userId : userId,
       transcript : messages 
     })
 
-    //TODO : create a server action that will generate the feedback
-
     if (success && feedbackId) {
       router.push(`/interview/${interviewId}/feedback`);
     } else {
-      console.log("Error saving the feedback");
+      if (process.env.NODE_ENV === "development") {
+        console.log("Error saving the feedback");
+      }
       router.push("/");
     }
-  };
+  }, [interviewId, userId, router]);
 
   // === REDIRECT AFTER END ===
   useEffect(() => {
@@ -141,16 +147,23 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
       if (type === "generate") router.push(`/interview/${interviewId}`);
       else if (type === "interview") handleGenerateFeedback(messages);
     }
-  }, [callStatus, router, type, interviewId]);
+  }, [callStatus, router, type, interviewId, handleGenerateFeedback, messages]);
 
   // === START CALL — REAL USER VARS ===
-  const handleCall = async () => {
+  const formattedQuestions = useMemo(() => {
+    if (!questions || !Array.isArray(questions)) return "";
+    return questions.map((question) => `- ${question}`).join('\n');
+  }, [questions]);
+
+  const handleCall = useCallback(async () => {
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
 
     try {
       setCallStatus(CallStatus.CONNECTING);
-      console.log("Starting Vapi with Firebase user:", { userId, userName });
+      if (process.env.NODE_ENV === "development") {
+        console.log("Starting Vapi with Firebase user:", { userId, userName });
+      }
 
       if (type === "generate") {
         await vapi.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID, {
@@ -162,43 +175,45 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
           },
         });
       } else {
-        let formattedQuestions = "" ;
-        if ( questions) {
-          formattedQuestions = questions.map((question)=> `- ${question}`).join('\n')
-        }
-
         await vapi.start(interviewer, {
           variableValues : {
             questions : formattedQuestions
           }
-        })
+        });
       }
 
-
-      console.log("Vapi call started with real Firebase user");
+      if (process.env.NODE_ENV === "development") {
+        console.log("Vapi call started with real Firebase user");
+      }
     } catch (error) {
-      console.error("Vapi start failed:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Vapi start failed:", error);
+      }
       alert("Call failed. Are you logged in?");
       setCallStatus(CallStatus.INACTIVE);
       hasStartedRef.current = false;
     }
-  };
+  }, [type, userId, userName, formattedQuestions]);
 
   // === END CALL ===
-  const handleDisconnect = async () => {
+  const handleDisconnect = useCallback(async () => {
     try {
       setCallStatus(CallStatus.FINISHED);
       await vapi.stop();
     } catch (error) {
       // Silently handle disconnect errors
-      console.log("Call disconnected");
+      if (process.env.NODE_ENV === "development") {
+        console.log("Call disconnected");
+      }
       setCallStatus(CallStatus.FINISHED);
     }
-  };
+  }, []);
 
-  const latestMessage = messages[messages.length - 1]?.content;
-  const isCallInactiveOrFinished =
-    callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED;
+  const latestMessage = useMemo(() => messages[messages.length - 1]?.content, [messages]);
+  const isCallInactiveOrFinished = useMemo(
+    () => callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED,
+    [callStatus]
+  );
 
   return (
     <>

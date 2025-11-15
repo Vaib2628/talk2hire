@@ -1,8 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Talk2Hire - AI Voice Interview Coach
+
+A Next.js application for practicing job interviews with AI assistance and getting detailed feedback.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ and npm/yarn/pnpm
+- Firebase account (for authentication and database)
+- Vapi account (optional, for AI interview features)
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+3. **Set up environment variables** - See [SETUP.md](./SETUP.md) for detailed instructions
+
+4. Run the development server:
 
 ```bash
 npm run dev
@@ -16,9 +39,23 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Important:** Before running the app, you need to configure Firebase. See [SETUP.md](./SETUP.md) for complete setup instructions.
+
+Quick setup:
+1. Create `.env.local` file in the project root
+2. Copy Firebase configuration from `env.example`
+3. Add your Firebase credentials
+4. Restart the development server
+
+## Features
+
+- 🎤 AI-powered voice interviews
+- 📊 Detailed interview feedback
+- 🔐 Firebase authentication
+- 📱 Responsive design
+- ⚡ Optimized performance
 
 ## Learn More
 

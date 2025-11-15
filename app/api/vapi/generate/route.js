@@ -35,24 +35,31 @@ export async function POST(request) {
             `
         })
 
+        const interviewRef = db.collection("interviews").doc();
         const interview = {
             role , type , level , 
-            techstack : techstack.split(","),
+            techstack : techstack.split(",").map(t => t.trim()),
             questions : JSON.parse(questions) , 
             finalized : true , 
             userId : userid,
             userName: userName || "Candidate",
             amount: amount || 10,
-            coverImage : getRandomInterviewCover(),
+            coverImage : getRandomInterviewCover(interviewRef.id),
             createdAt : new Date().toISOString()
         }
 
-        await db.collection("interviews").add(interview)
+        await interviewRef.set(interview)
 
         return Response.json({success : true , message : "Successfully stored the interviews"} , {status : 200}) ;
         
     } catch (error) {
-        console.error(error);
-        return Response.json({status : false , error} , {status : 500});
+        if (process.env.NODE_ENV === "development") {
+            console.error(error);
+        }
+        return Response.json({
+            success: false, 
+            message: "Failed to generate interview",
+            error: process.env.NODE_ENV === "development" ? error.message : undefined
+        }, {status : 500});
     }
 }

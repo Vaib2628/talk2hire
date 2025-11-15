@@ -16,15 +16,13 @@ const InterviewPage = async ({ params }) => {
     redirect("/");
   }
 
-  console.log(interview.questions)
-
   return (
     <>
       <div className="flex flex-row gap-4 justify-between">
         <div className="flex flex-row gap-4 items-center max-sm:flex-col">
           <div className="flex flex-row gap-4 items-center">
             <Image
-              src={getRandomInterviewCover()}
+              src={interview.coverImage || getRandomInterviewCover(id)}
               width={40}
               height={40}
               alt="interview cover"
