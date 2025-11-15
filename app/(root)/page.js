@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   getCurrentUser
 } from "@/lib/Actions/auth.action";
-import { getInterviewsByUserId , getLatestInterviews } from "@/lib/Actions/general.action";
+import { getInterviewsByUserId , getLatestInterviews, getFeedbackForInterviews } from "@/lib/Actions/general.action";
 const HomePage = async () => {
   const userRecord = await getCurrentUser();
 
@@ -14,6 +14,13 @@ const HomePage = async () => {
     getInterviewsByUserId(userRecord?.id),
     getLatestInterviews({ userId: userRecord?.id }),
   ]);
+
+  // Bulk fetch feedback for all interviews
+  const allInterviewIds = [
+    ...userInterviews.map(i => i.id),
+    ...latestInterviews.map(i => i.id)
+  ];
+  const feedbackMap = await getFeedbackForInterviews(allInterviewIds, userRecord?.id);
 
   const hasPastInterviews = userInterviews?.length > 0;
   const hasUpcomingInterviews = latestInterviews?.length > 0;
@@ -54,7 +61,7 @@ const HomePage = async () => {
           {hasPastInterviews ? (
             userInterviews.map((interview, index) => (
               <div key={interview.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.1}s` }}>
-                <InterviewCard {...interview} />
+                <InterviewCard {...interview} feedback={feedbackMap[interview.id]} />
               </div>
             ))
           ) : (
@@ -89,7 +96,7 @@ const HomePage = async () => {
           {hasUpcomingInterviews ? (
             latestInterviews.map((interview, index) => (
               <div key={interview.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.1}s` }}>
-                <InterviewCard {...interview} />
+                <InterviewCard {...interview} feedback={feedbackMap[interview.id]} />
               </div>
             ))
           ) : (

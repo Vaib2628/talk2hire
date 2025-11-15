@@ -25,6 +25,7 @@ const Navbar = () => {
       <div className="flex items-center gap-4">
         <Link 
           href="/interview" 
+          prefetch={true}
           className="hidden sm:block text-light-100 hover:text-primary-200 transition-colors font-medium"
         >
           New Interview
