@@ -74,7 +74,9 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
   // === VAPI LISTENERS ===
   useEffect(() => {
     const onCallStart = () => setCallStatus(CallStatus.ACTIVE);
-    const onCallEnd = () => setCallStatus(CallStatus.FINISHED);
+    const onCallEnd = () => {
+      setCallStatus(CallStatus.FINISHED);
+    };
     const onMessage = (msg) => {
       if (msg.type === "transcript" && msg.transcriptType === "final") {
         setMessages((prev) => [
@@ -85,12 +87,24 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
     };
     const onSpeechStart = () => setIsSpeaking(true);
     const onSpeechEnd = () => setIsSpeaking(false);
+    const onError = (error) => {
+      // Silently handle expected errors like "meeting has ended"
+      if (error?.message?.toLowerCase().includes("meeting") || 
+          error?.message?.toLowerCase().includes("ended") ||
+          error?.message?.toLowerCase().includes("call ended")) {
+        console.log("Call ended normally");
+        setCallStatus(CallStatus.FINISHED);
+        return;
+      }
+      console.error("VAPI error:", error);
+    };
 
     vapi.on("call-start", onCallStart);
     vapi.on("call-end", onCallEnd);
     vapi.on("message", onMessage);
     vapi.on("speech-start", onSpeechStart);
     vapi.on("speech-end", onSpeechEnd);
+    vapi.on("error", onError);
 
     return () => {
       vapi.off("call-start", onCallStart);
@@ -98,6 +112,7 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
       vapi.off("message", onMessage);
       vapi.off("speech-start", onSpeechStart);
       vapi.off("speech-end", onSpeechEnd);
+      vapi.off("error", onError);
     };
   }, []);
   //  HANDLING GENERATE FEEDBACK
@@ -171,8 +186,14 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
 
   // === END CALL ===
   const handleDisconnect = async () => {
-    setCallStatus(CallStatus.FINISHED);
-    await vapi.stop();
+    try {
+      setCallStatus(CallStatus.FINISHED);
+      await vapi.stop();
+    } catch (error) {
+      // Silently handle disconnect errors
+      console.log("Call disconnected");
+      setCallStatus(CallStatus.FINISHED);
+    }
   };
 
   const latestMessage = messages[messages.length - 1]?.content;

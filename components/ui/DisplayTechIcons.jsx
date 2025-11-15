@@ -4,6 +4,12 @@ import React from 'react'
 
 const DisplayTechIcons = async ({techstack}) => {
     const techIcons =  await getTechLogos(techstack)
+    
+    // Handle empty techIcons array
+    if (!techIcons || techIcons.length === 0) {
+      return null;
+    }
+    
   return (
     <div className='flex '>
        {techIcons.slice(0, 3).map(({tech , url } , index)=>(

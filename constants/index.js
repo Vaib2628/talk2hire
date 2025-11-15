@@ -142,7 +142,7 @@ If unsure, redirect the candidate to HR for more details.
 
 Conclude the interview properly:
 Thank the candidate for their time.
-Inform them that the company will reach out soon with feedback.
+When ending the interview, inform them: "I'll now generate your detailed feedback and redirect you to view it shortly. Alternatively, you may hang up and check your feedback later on your dashboard."
 End the conversation on a polite and positive note.
 
 
