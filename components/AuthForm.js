@@ -109,12 +109,11 @@ async function onSubmit(values) {
 
           toast.success("Sign In successfully .")
           
-          // Redirect to home page
-          setTimeout(() => {
-            if (typeof window !== 'undefined') {
-              window.location.replace('/');
-            }
-          }, 1000);
+          localStorage.removeItem('auth_cache');
+          
+          if (typeof window !== 'undefined') {
+            router.replace('/');
+          }
         } catch (err) {
           const code = err?.code;
           if (code === 'auth/user-not-found') {
