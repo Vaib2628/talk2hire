@@ -16,8 +16,8 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="flex items-center justify-between w-full mb-8 pb-4 border-b border-border/40">
-      <Link href={'/'} className='flex items-center gap-2 hover:opacity-80 transition-opacity'>
+    <nav className="flex items-center justify-between w-full border-b border-border/40 mb-0 py-3">
+      <Link href={'/'} prefetch className='flex items-center gap-2 hover:opacity-80 transition-opacity'>
         <Image src="/logo.svg" alt="logo" width={32} height={32} className="animate-pulse" />
         <h2 className="text-primary-100 font-bold text-xl">Talk2Hire</h2>
       </Link>
@@ -67,6 +67,7 @@ const Navbar = () => {
                 <div className="py-1">
                   <Link
                     href="/"
+                    prefetch
                     className="block px-4 py-2 text-sm text-light-100 hover:bg-dark-300 transition-colors"
                     onClick={() => setShowMenu(false)}
                   >
@@ -74,6 +75,7 @@ const Navbar = () => {
                   </Link>
                   <Link
                     href="/interview"
+                    prefetch
                     className="block px-4 py-2 text-sm text-light-100 hover:bg-dark-300 transition-colors"
                     onClick={() => setShowMenu(false)}
                   >

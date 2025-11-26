@@ -260,7 +260,10 @@
   }
 
   .root-layout {
-    @apply flex mx-auto max-w-7xl flex-col gap-12 my-12 px-16 max-sm:px-4 max-sm:my-8;
+    @apply flex mx-auto max-w-7xl flex-col gap-8 my-0 px-16 max-sm:px-4;
+  }
+  .content-area {
+    @apply flex flex-col flex-1 min-h-[calc(100vh-64px)];
   }
 
   .card-cta {

@@ -155,14 +155,14 @@ async function onSubmit(values) {
 
   return (
     <div className="card-border lg-min-w-[400px]">
-      <div className="flex flex-col gap-4 py-14 px-16 card">
+      <div className="flex flex-col gap-3 py-10 px-10 card">
         <div className="flex flex-row justify-center ">
           <Image src="/logo.svg" alt="logo" width={32} height={32} />
           <h2 className="text-primary-100">Talk2Hire</h2>
         </div>
         <h3>Practise the job interviews with the AI</h3>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="form space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="form space-y-3 sm:space-y-6">
             {/* Name field - only for sign-up */}
             {!isSignIn && (
               <FormField

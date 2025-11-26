@@ -1,22 +1,19 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { AuthProvider } from '@/lib/auth-context'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Navbar from '@/components/Navbar'
 
 const RootLayout = ({children}) => {
   return (
-    <AuthProvider>
-      <ProtectedRoute>
-        <div className='root-layout'>
-          <Navbar />
-
+    <ProtectedRoute>
+      <div className='root-layout'>
+        <Navbar />
+        <main className="content-area">
           {children}
-          
-        </div>
-      </ProtectedRoute>
-    </AuthProvider>
+        </main>
+      </div>
+    </ProtectedRoute>
   )
 }
 
