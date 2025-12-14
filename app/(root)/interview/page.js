@@ -10,7 +10,7 @@ const InterviewPage = () => {
 
   return (
     <>
-      <h3>Interview Generation</h3>
+      <h3 className='mb-2'>Interview Generation</h3>
       <Agent type="generate" userName={userName} userId={userId} />
     </>
   )

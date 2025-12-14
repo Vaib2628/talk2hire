@@ -22,11 +22,6 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
   const [messages, setMessages] = useState([]);
   const hasStartedRef = useRef(false);
 
-  // === REAL USER DATA (FALLBACK IF NOT LOGGED IN) ===
-  // const userName = user?.name || "Guest";
-  // const userId = user?.id || `guest_${Date.now()}`;
-
-  // === NUCLEAR BYPASS (UNCHANGED) ===
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -217,7 +212,7 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
 
   return (
     <>
-      <div className="call-view">
+      <div className="call-view ">
         <div className="card-interviewer">
           <div className="avatar">
             <Image
@@ -246,7 +241,7 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
       </div>
 
       {messages.length > 0 && (
-        <div className="transcript-border">
+        <div className="transcript-border mt-3">
           <div className="transcript">
             <p className="transition-opacity duration-500 opacity-0 animate-fadeIn opacity-100">
               {latestMessage}
@@ -255,7 +250,7 @@ const Agent = ({ type, interviewId, questions, userName, userId }) => {
         </div>
       )}
 
-      <div className="w-full justify-center flex">
+      <div className="w-full justify-center flex mt-3">
         {callStatus !== "ACTIVE" ? (
           <button className="relative btn-call" onClick={handleCall}>
             <span

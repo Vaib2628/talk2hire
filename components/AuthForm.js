@@ -8,6 +8,7 @@ import FormField from "@/components/FormField";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/firebase/client";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ const authFormSchema = (type) => {
   
 const AuthForm = ({type}) => {
   const router = useRouter();
+  const { checkAuth } = useAuth();
   const formSchema = authFormSchema(type);
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -94,22 +96,26 @@ async function onSubmit(values) {
             headers: {
               'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({ email, idToken }),
           });
           
           const result = await response.json();
           
-          // Add a small delay to ensure server-side cookie is properly set
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Small delay to ensure Set-Cookie applies
+          await new Promise(resolve => setTimeout(resolve, 200));
 
           if (!result?.success) {
             toast.error(result?.message || 'Failed to sign in');
             return;
           }
 
-          toast.success("Sign In successfully .")
+          toast.success("Signed in successfully.")
           
           localStorage.removeItem('auth_cache');
+          
+          // Force refresh auth context before navigating
+          await checkAuth(true);
           
           if (typeof window !== 'undefined') {
             router.replace('/');
